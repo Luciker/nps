@@ -5,15 +5,16 @@ package mux
 import (
 	"bufio"
 	"bytes"
-	"github.com/cnlh/nps/lib/common"
-	"github.com/cnlh/nps/vender/github.com/astaxie/beego/logs"
-	"github.com/pkg/errors"
 	"io"
 	"net"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/astaxie/beego/logs"
+	"github.com/cnlh/nps/lib/common"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -88,6 +89,7 @@ func (pMux *PortMux) process(conn net.Conn) {
 	var ch chan *PortConn
 	var rs []byte
 	var buffer bytes.Buffer
+	var readMore = false
 	switch common.BytesToNum(buf) {
 	case HTTP_CONNECT, HTTP_DELETE, HTTP_GET, HTTP_HEAD, HTTP_OPTIONS, HTTP_POST, HTTP_PUT, HTTP_TRACE: //http and manager
 		buffer.Reset()
@@ -122,6 +124,7 @@ func (pMux *PortMux) process(conn net.Conn) {
 	case CLIENT: // client connection
 		ch = pMux.clientConn
 	default: // https
+		readMore = true
 		ch = pMux.httpsConn
 	}
 	if len(rs) == 0 {
@@ -130,7 +133,7 @@ func (pMux *PortMux) process(conn net.Conn) {
 	timer := time.NewTimer(ACCEPT_TIME_OUT)
 	select {
 	case <-timer.C:
-	case ch <- newPortConn(conn, rs):
+	case ch <- newPortConn(conn, rs, readMore):
 	}
 }
 

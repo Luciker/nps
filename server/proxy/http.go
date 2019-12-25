@@ -3,13 +3,6 @@ package proxy
 import (
 	"bufio"
 	"crypto/tls"
-	"github.com/cnlh/nps/bridge"
-	"github.com/cnlh/nps/lib/cache"
-	"github.com/cnlh/nps/lib/common"
-	"github.com/cnlh/nps/lib/conn"
-	"github.com/cnlh/nps/lib/file"
-	"github.com/cnlh/nps/server/connection"
-	"github.com/cnlh/nps/vender/github.com/astaxie/beego/logs"
 	"io"
 	"net"
 	"net/http"
@@ -19,6 +12,14 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/astaxie/beego/logs"
+	"github.com/cnlh/nps/bridge"
+	"github.com/cnlh/nps/lib/cache"
+	"github.com/cnlh/nps/lib/common"
+	"github.com/cnlh/nps/lib/conn"
+	"github.com/cnlh/nps/lib/file"
+	"github.com/cnlh/nps/server/connection"
 )
 
 type httpServer struct {
@@ -170,11 +171,11 @@ reset:
 			}
 		}()
 		for {
-			if resp, err := http.ReadResponse(bufio.NewReader(connClient), r); err != nil {
+			if resp, err := http.ReadResponse(bufio.NewReader(connClient), r); err != nil || resp == nil {
 				return
 			} else {
 				//if the cache is start and the response is in the extension,store the response to the cache list
-				if s.useCache && strings.Contains(r.URL.Path, ".") {
+				if s.useCache && r.URL != nil && strings.Contains(r.URL.Path, ".") {
 					b, err := httputil.DumpResponse(resp, true)
 					if err != nil {
 						return
