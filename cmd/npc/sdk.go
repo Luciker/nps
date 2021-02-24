@@ -2,10 +2,10 @@ package main
 
 import (
 	"C"
+	"ehang.io/nps/client"
+	"ehang.io/nps/lib/common"
+	"ehang.io/nps/lib/version"
 	"github.com/astaxie/beego/logs"
-	"github.com/cnlh/nps/client"
-	"github.com/cnlh/nps/lib/common"
-	"github.com/cnlh/nps/lib/version"
 )
 
 var cl *client.TRPClient
@@ -16,7 +16,7 @@ func StartClientByVerifyKey(serverAddr, verifyKey, connType, proxyUrl *C.char) i
 	if cl != nil {
 		cl.Close()
 	}
-	cl = client.NewRPClient(C.GoString(serverAddr), C.GoString(verifyKey), C.GoString(connType), C.GoString(proxyUrl), nil)
+	cl = client.NewRPClient(C.GoString(serverAddr), C.GoString(verifyKey), C.GoString(connType), C.GoString(proxyUrl), nil, 60)
 	go func() {
 		cl.Start()
 		return

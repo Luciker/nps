@@ -1,16 +1,16 @@
 package main
 
 import (
+	"ehang.io/nps/client"
+	"ehang.io/nps/lib/common"
+	"ehang.io/nps/lib/daemon"
+	"ehang.io/nps/lib/version"
 	"fmt"
 	"fyne.io/fyne"
 	"fyne.io/fyne/app"
 	"fyne.io/fyne/layout"
 	"fyne.io/fyne/widget"
 	"github.com/astaxie/beego/logs"
-	"github.com/cnlh/nps/client"
-	"github.com/cnlh/nps/lib/common"
-	"github.com/cnlh/nps/lib/daemon"
-	"github.com/cnlh/nps/lib/version"
 	"io/ioutil"
 	"os"
 	"path"
@@ -32,10 +32,11 @@ func main() {
 }
 
 var (
-	start    bool
-	status   = "Start!"
-	connType = "tcp"
-	cl       = new(client.TRPClient)
+	start     bool
+	status    = "Start!"
+	connType  = "tcp"
+	cl        = new(client.TRPClient)
+	refreshCh = make(chan struct{})
 )
 
 func WidgetScreen() fyne.CanvasObject {
@@ -54,28 +55,8 @@ func makeMainTab() fyne.Widget {
 	radio := widget.NewRadio([]string{"tcp", "kcp"}, func(s string) { connType = s })
 	radio.Horizontal = true
 
-	refreshCh := make(chan struct{})
 	button := widget.NewButton(status, func() {
-		start = !start
-		if start {
-			status = "Stop!"
-			// init the npc
-			fmt.Println("submit", serverPort.Text, vKey.Text, connType)
-			sp, vk, ct := loadConfig()
-			if sp != serverPort.Text || vk != vKey.Text || ct != connType {
-				saveConfig(serverPort.Text, vKey.Text, connType)
-			}
-			cl = client.NewRPClient(serverPort.Text, vKey.Text, connType, "", nil)
-			go cl.Start()
-		} else {
-			// close the npc
-			status = "Start!"
-			if cl != nil {
-				go cl.Close()
-				cl = nil
-			}
-		}
-		refreshCh <- struct{}{}
+		onclick(serverPort.Text, vKey.Text, connType)
 	})
 	go func() {
 		for {
@@ -85,7 +66,7 @@ func makeMainTab() fyne.Widget {
 	}()
 
 	lo := widget.NewMultiLineEntry()
-	lo.SetReadOnly(true)
+	lo.Disable()
 	lo.Resize(fyne.NewSize(910, 250))
 	slo := widget.NewScrollContainer(lo)
 	slo.Resize(fyne.NewSize(910, 250))
@@ -103,6 +84,7 @@ func makeMainTab() fyne.Widget {
 		vKey.SetText(vk)
 		connType = ct
 		radio.SetSelected(ct)
+		onclick(sp, vk, ct)
 	}
 
 	return widget.NewVBox(
@@ -113,6 +95,29 @@ func makeMainTab() fyne.Widget {
 		button,
 		slo,
 	)
+}
+
+func onclick(s, v, c string) {
+	start = !start
+	if start {
+		status = "Stop!"
+		// init the npc
+		fmt.Println("submit", s, v, c)
+		sp, vk, ct := loadConfig()
+		if sp != s || vk != v || ct != c {
+			saveConfig(s, v, c)
+		}
+		cl = client.NewRPClient(s, v, c, "", nil, 60)
+		go cl.Start()
+	} else {
+		// close the npc
+		status = "Start!"
+		if cl != nil {
+			go cl.Close()
+			cl = nil
+		}
+	}
+	refreshCh <- struct{}{}
 }
 
 func getDir() (dir string, err error) {
